@@ -10,9 +10,9 @@
     "login": {
         "title": "Login",
         "submit": "Login",
-        "email_or_nick": "Email or Nickname",
-        "password": "Password",
-        "remember_me":"Remember me"
+        "email_or_nick": "E-Mail-Adresse oder Spitzname",
+        "password": "Passwort",
+        "remember_me":"Eingeloggt bleiben"
     },
     "attribute": {
         "wkt": {
