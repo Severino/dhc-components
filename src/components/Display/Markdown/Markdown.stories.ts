@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/vue3';
 
 import Markdown from './Markdown.vue';
+import MarkdownText from '@/components/Display/Markdown/MarkdownText.vue';
 
 const meta: Meta<typeof Markdown> = {
     component: Markdown,
@@ -25,7 +26,10 @@ A little code sample
 
 A picture
 
+:tada:
+
 ![alt text][2]
+![alt text 2](http://www.google.com/intl/en_ALL/images/logo.gif)
 
 A list
 
@@ -75,5 +79,26 @@ export const ReadOnly: Story = {
             return { args };
         },
         template: '<Markdown v-bind="args" />',
+    }),
+};
+
+export const ViewerOnly: Story = {
+    parameters: {
+        docs: {
+            description: {
+                story: 'Use when you only need to render the markdown.',
+            },
+        },
+    },
+    args: {
+        data: content,
+        // Add props here
+    },
+    render: (args) => ({
+        components: { MarkdownText },
+        setup() {
+            return { args };
+        },
+        template: '<MarkdownText v-bind="args" />',
     }),
 };

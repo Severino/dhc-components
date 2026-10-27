@@ -1,74 +1,56 @@
 <template>
-    <MilkdownProvider>
-        <MilkdownEditor
-            ref="editorRef"
-            :class="classes"
-            :data="data"
-            :readonly="readonly"
-            :additional-tools="additionalTools"
-            @update="emitUpdate"
-        />
-    </MilkdownProvider>
+    <MarkdownEditor
+        ref="editorRef"
+        :class="classes"
+        :data="data"
+        :readonly="readonly"
+        :additional-tools="additionalTools"
+        @update="emitUpdate"
+    />
 </template>
 
-<script lang="ts">
+<script
+    lang="ts"
+    setup
+>
     import {
         ref,
         watch,
     } from 'vue';
 
     import { Tool } from '@/components/Layout/Toolbar/definitions';
-    import MilkdownEditor from './MarkdownEditor.vue';
-    import { MilkdownProvider } from '@milkdown/vue';
+    import MarkdownEditor from './MarkdownEditor.vue';
 
-    export default {
-        components: {
-            MilkdownProvider,
-            MilkdownEditor,
-        },
-        props: {
-            data: {
-                required: true,
-                type: String,
-            },
-            classes: {
-                required: false,
-                type: String,
-                default: 'milkdown-wrapper h-100',
-            },
-            readonly: {
-                required: false,
-                type: Boolean,
-                default: false,
-            },
-            additionalTools: {
-                required: false,
-                type: Array<Tool>,
-            },
-        },
-        emits: ['update'],
-        setup(props, context) {
-            const getEditorMarkdown = () => {
-                if (editorRef.value) {return editorRef.value.getMarkdown();}
-                return '';
-            };
+    const props = withDefaults(defineProps<{
+        data: string,
+        classes: string,
+        readonly: boolean
+        additionalTools: Array<Tool>
+    }>(), {
+        classes: 'milkdown-wrapper h-100',
+        readonly: false,
+        additionalTools: () => [] as Array<Tool>
+    });
 
-            const emitUpdate = (data: string) => {
-                context.emit('update', data);
-            };
+    const emit = defineEmits<{
+        (event: 'update', data: string): void
+    }>();
 
-            const editorRef = ref<InstanceType<typeof MilkdownEditor>>();
-            watch(() => props.data, (newData, oldData) => {
-                if (editorRef.value && editorRef.value.setMarkdown) {
-                    editorRef.value.setMarkdown(newData);
-                }
-            });
+    const editorRef = ref<InstanceType<typeof MarkdownEditor>>();
 
-            return {
-                editorRef,
-                getEditorMarkdown,
-                emitUpdate,
-            };
-        },
+    const getEditorMarkdown = () => {
+        return editorRef.value?.getMarkdown() ?? props.data;
     };
+
+    const emitUpdate = (data: string) => {
+        emit('update', data);
+    };
+
+    watch(() => props.data, (newData) => {
+        editorRef.value?.setMarkdown(newData);
+    });
+
+    defineExpose({
+        getEditorMarkdown
+    })
 </script>

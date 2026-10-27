@@ -1,5 +1,8 @@
 <template>
-    <div class="bg-white rounded overflow-auto d-flex flex-column">
+    <div
+        class="dhc-markdown-editor overflow-auto d-flex flex-column"
+        :class="styleClasses"
+    >
         <MarkdownToolbar
             v-if="!readonly"
             class="pb-0 m-2 mb-0"
@@ -7,10 +10,11 @@
             :additional-tools="additionalTools"
             @toggle="setEditorType"
         />
-        <Milkdown
+        <MarkdownText
             v-show="state.type == 'md'"
-            :class="state.editModeClasses"
+            :data="data"
             :editor="editor"
+            :class="state.editModeClasses"
         />
         <textarea
             v-show="state.type !== 'md'"
@@ -21,26 +25,25 @@
     </div>
 </template>
 
-<script lang="ts">
+<script
+    setup
+    lang="ts"
+>
     import {
         computed,
         reactive,
-        ref,
-        toRefs,
+        shallowRef,
         watch,
     } from 'vue';
 
     import {
         Editor,
-        rootCtx,
+        EditorStatus,
         defaultValueCtx,
         rootAttrsCtx,
+        editorViewCtx,
         editorViewOptionsCtx,
     } from '@milkdown/core';
-    import {
-        Milkdown,
-        useEditor,
-    } from '@milkdown/vue';
 
     import { commonmark } from '@milkdown/preset-commonmark';
     import { gfm } from '@milkdown/preset-gfm';
@@ -61,130 +64,120 @@
 
     import { Tool } from '@/components/Layout/Toolbar/definitions';
     import MarkdownToolbar from './MarkdownToolbar.vue';
+    import MarkdownText from '@/components/Display/Markdown/MarkdownText.vue';
 
-    export default {
-        components: {
-            Milkdown,
-            MarkdownToolbar,
-        },
-        props: {
-            data: {
-                required: true,
-                type: String,
-            },
-            readonly: {
-                required: false,
-                type: Boolean,
-                default: false,
-            },
-            additionalTools: {
-                required: false,
-                type: Array<Tool>,
-            },
-        },
-        emits: ['closing', 'update'],
-        setup(props, context) {
-            const {
-                data,
-                readonly,
-            } = toRefs(props);
+    const props = withDefaults(defineProps<{
+        data: string;
+        readonly?: boolean;
+        additionalTools?: Array<Tool>;
+        unstyled?: boolean;
+    }>(), {
+        readonly: false,
+        unstyled: false,
+    });
 
-            const editor = ref<Editor>();
+    const emit = defineEmits<{
+        (event: 'closing'): void;
+        (event: 'update', markdown: string): void;
+    }>();
 
-            useEditor((root: HTMLDivElement) => {
-                editor.value = Editor.make()
-                    .config((ctx) => {
-                        ctx.set(rootCtx, root);
-                        ctx.set(defaultValueCtx, data.value);
-                        ctx.update(rootAttrsCtx, (prev) => ({
-                            ...prev,
-                            class: `milkdown h-100`,
-                        }));
-                        ctx.update(editorViewOptionsCtx, (prev) => ({
-                            ...prev,
-                            editable: _ => !readonly.value,
-                        }));
-                        ctx.get(listenerCtx).markdownUpdated((ctx, markdown) => {
-                            state.markdownString = markdown;
-                        });
-                    })
-                .use(commonmark)
-                .use(gfm)
-                .use(listener)
-                .use(history)
-                .use(clipboard)
-                .use(prism)
-                .use(emojiPlugin)
-                .use(indent)
-                .use(upload);
+    const emojiPlugin = [
+        emojiAttr,
+        remarkEmojiPlugin,
+        emojiSchema,
+    ].flat();
 
-                return editor.value;
-            });
+    // The editor is created here without a root; MarkdownText mounts it into the DOM.
+    // shallowRef keeps Vue from proxying the editor (it relies on private fields).
+    const editor = shallowRef<Editor>(
+        Editor.make()
+            .config((ctx) => {
+                ctx.set(defaultValueCtx, props.data);
+                ctx.update(rootAttrsCtx, (prev) => ({
+                    ...prev,
+                    class: `milkdown h-100`,
+                }));
+                ctx.update(editorViewOptionsCtx, (prev) => ({
+                    ...prev,
+                    editable: _ => !props.readonly,
+                }));
+                ctx.get(listenerCtx).markdownUpdated((ctx, markdown) => {
+                    state.markdownString = markdown;
+                });
+            })
+            .use(commonmark)
+            .use(gfm)
+            .use(listener)
+            .use(history)
+            .use(clipboard)
+            .use(prism)
+            .use(emojiPlugin)
+            .use(indent)
+            .use(upload)
+    );
 
-            const state = reactive({
-                dirty: false,
-                show: false,
-                markdownString: data.value,
-                type: 'md',
-                editModeClasses: computed(() => {
-                    if(!readonly.value) {
-                        return [
-                            'flex-grow-1',
-                            'overflow-y-auto',
-                        ];
-                    }
-                    return [];
-                }),
-            });
+    // ProseMirror only re-evaluates `editable` on view updates.
+    watch(() => props.readonly, () => {
+        const current = editor.value;
+        if (current?.status !== EditorStatus.Created) { return; }
+        current.action((ctx) => {
+            const view = ctx.get(editorViewCtx);
+            view.dispatch(view.state.tr);
+        });
+    });
 
-            // FUNCTIONS
-            const getMarkdown = () => {
-                return state.markdownString;
-            };
-            const setMarkdown = (markdown: string) => {
-                if(editor.value) {
-                    editor.value.action(replaceAll(markdown));
-                }
-            };
-            const setEditorType = () => {
-                if(state.type == 'md') {
-                    state.type = 'raw';
-                } else {
-                    const markdown = getMarkdown();
-                    setMarkdown(markdown);
-                    state.type = 'md';
-                }
-            };
+    const state = reactive({
+        dirty: false,
+        show: false,
+        markdownString: props.data,
+        type: 'md',
+        editModeClasses: computed(() => {
+            if (!props.readonly) {
+                return [
+                    'flex-grow-1',
+                    'overflow-y-auto',
+                ];
+            }
+            return [];
+        }),
+    });
 
-            // DATA
-            const emojiPlugin = [
-                emojiAttr,
-                remarkEmojiPlugin,
-                emojiSchema,
-            ].flat();
-
-            // Only add the prevent navigation hook if the editor is not readonly
-            // otherwise the hook will be added concurrently and unecessary when the editor is used
-            // in preview mode.
-            if(!readonly.value) { usePreventNavigation(() => state.dirty); }
-
-            watch(() => state.markdownString, (markdownString: string) => {
-                state.dirty = markdownString != data.value;
-                context.emit('update', markdownString);
-            });
-
-            // RETURN
-            return {
-                // HELPERS
-                // PROPS
-                // LOCAL
-                getMarkdown,
-                setMarkdown,
-                setEditorType,
-                // STATE
-                editor,
-                state,
-            };
-        },
+    const getMarkdown = () => {
+        return state.markdownString;
     };
+    const setMarkdown = (markdown: string) => {
+        if (editor.value.status === EditorStatus.Created) {
+            editor.value.action(replaceAll(markdown));
+        }
+    };
+    const setEditorType = () => {
+        if (state.type == 'md') {
+            state.type = 'raw';
+        } else {
+            const markdown = getMarkdown();
+            setMarkdown(markdown);
+            state.type = 'md';
+        }
+    };
+
+    // The hook is always registered, so the editor can be toggled between readonly and editable.
+    usePreventNavigation(() => !props.readonly && state.dirty);
+
+    watch(() => state.markdownString, (markdownString: string) => {
+        state.dirty = markdownString != props.data;
+        emit('update', markdownString);
+    });
+
+    const styleClasses = computed(() => {
+        if (props.unstyled) return "unstyled"
+        return "bg-white rounded"
+    })
+
+    defineExpose({
+        getMarkdown,
+        setMarkdown,
+        setEditorType,
+        editor,
+        state,
+    });
 </script>
