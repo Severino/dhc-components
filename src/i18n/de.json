@@ -23,5 +23,8 @@
         "count": "Anzahl",
         "skip": "Überspringen",
         "shown_of": "{from} von {to}"
+    },
+    "validation": {
+        "field_is_required": "Dieses Feld ist erforderlich"
     }
 }

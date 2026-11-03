@@ -1,16 +1,28 @@
 <template>
-    <div class="card p-3">
-        <div class="card-body">
-            <h2 class="fw-bold card-title mb-4">
-                {{ t('login.title') }}
-            </h2>
+    <div
+        class="card p-3"
+        style="max-width: 460px;"
+    >
+        <div class="card-body" :class="{'loading': loading}">
+            <header class="mb-4">
+                <div
+                    v-if="$slots.header"
+                    class="mb-3"
+                >
+                    <slot name="header" />
+                </div>
+                <h2 class="fw-bold card-title">
+                    {{ t('login.title') }}
+                </h2>
+            </header>
+
             <form
                 @submit.stop.prevent="submit"
                 class="d-flex flex-column gap-2 needs-validation"
                 :class="{ 'was-validated': validated }"
                 novalidate
             >
-                <div class="mb-2">
+                <div>
                     <label
                         for="username"
                         class="mb-1 d-flex flex-row align-items-center gap-2 text-secondary fw-bold"
@@ -59,19 +71,19 @@
                     </div>
                 </div>
 
-                <div
+                <Alert
                     class="mt-3"
-                    v-if="error"
-                >
-                    <Alert
-                        type="error"
-                        :message="errorMessage"
-                    />
-                </div>
+                    v-if="errorMessage"
+                    type="error"
+                    :message="errorMessage"
+                />
 
-                <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex justify-content-between align-items-center mt-3">
                     <div>
-                        <div class="checkbox">
+                        <div
+                            class="checkbox"
+                            v-if="showRememberMe"
+                        >
                             <label>
                                 <input
                                     id="remember-me"
@@ -92,7 +104,10 @@
                     </div>
                     <XButton
                         :loading="loading"
+                        type="submit"
                         :button-class="'primary'"
+                        style="min-width: 100px"
+                        :class="{ 'w-100': !showRememberMe }"
                     >
                         {{ t('login.submit') }}
                     </XButton>
@@ -120,50 +135,67 @@
     import Alert from '@/components/Notifications/Alert/Alert.vue';
     import XButton from '@/components/Button/XButton/XButton.vue';
     import { useGlobalI18n } from '@/composables/global-i18n'
-    
+
     const { t } = useGlobalI18n();
 
     const props = withDefaults(defineProps<{
-        invalidClass?: string;
-        loading: boolean;
-        errorMessage?: string;
+        action: Function,
+        showRememberMe?: boolean,
     }>(), {
-        errorMessage: '',
-        invalidClass: 'is-invalid',
+        showRememberMe: false
     });
 
     const emit = defineEmits([
-        'login',
+        'success',
     ]);
 
     const username = ref('');
     const password = ref('');
     const stayLoggedIn = ref(false);
     const validated = ref(false);
+    const errorMessage = ref('');
+    const loading = ref(false);
 
-    const submit = (event: Event) => {
+    const submit = async (event: Event) => {
+        if (loading.value) {
+            return;
+        }
         const form: HTMLFormElement = event.currentTarget as HTMLFormElement;
-
         validated.value = true;
+        console.log("FORM SUBMIT", form.checkValidity(), form);
         if (form.checkValidity()) {
-            login();
+            loading.value = true;
+            setInterval(() => {
+                console.log("LOADING", loading.value);
+            }, 100);
+            try {
+                await login();
+            } finally {
+                console.log("RESET LOADING");
+                loading.value = false;
+            }
         }
     };
 
-    const login = () => {
-        emit('login', {
+    const login = async () => {
+        const params: {
+            username: string,
+            password: string,
+            stayLoggedIn?: boolean
+        } = {
             username: username.value,
             password: password.value,
-            stayLoggedIn: stayLoggedIn.value
-        });
+        };
+
+        if (props.showRememberMe) {
+            params['stayLoggedIn'] = stayLoggedIn.value;
+        }
+        try {
+            await props.action(params)
+            emit('success');
+        } catch (error: any) {
+            console.log(error)
+            errorMessage.value = error?.message ?? error;
+        };
     };
-
-    const error = computed(_ => {
-        return props.errorMessage !== undefined && props.errorMessage.length > 0;
-    });
 </script>
-
-<style
-    lang='scss'
-    scoped
-></style>

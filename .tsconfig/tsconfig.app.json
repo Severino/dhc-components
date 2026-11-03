@@ -15,6 +15,7 @@
         "../vite.config.*",
         "../env.d.ts",
         "../.storybook/utils.ts",
+        "../.storybook/decorators.ts",
         "../src/**/*",
         "../src/**/*.vue",
         "../src/**/*.json"

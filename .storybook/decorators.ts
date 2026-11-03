@@ -1,6 +1,7 @@
 
-export const usePreventContextDecorator = (callback: Function) => {
+import type { PartialStoryFn, StoryContext } from '@storybook/types';
 
+export const usePreventContextDecorator = (callback: Function) => {
     return {
         parameters: {
             layout: 'fullscreen',
@@ -33,3 +34,23 @@ export const preventBrowserContextMenu = function (callback: Function) {
         }
     }
 };
+
+export const rowDecorator = () => {
+    return (story: PartialStoryFn, context: StoryContext) => ({
+        components: { story },
+        setup() {
+            return { args: context.args };
+        },
+        template: `<div class="d-flex gap-2"><story /></div>`,
+    })
+}
+
+export const columnDecorator = () => {
+    return (story: PartialStoryFn, context: StoryContext) => ({
+        components: { story },
+        setup() {
+            return { args: context.args };
+        },
+        template: `<div class="d-flex flex-column gap-2"><story /></div>`,
+    })
+}

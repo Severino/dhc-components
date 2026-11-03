@@ -80,7 +80,7 @@ export default defineConfig({
             '@': path.resolve(__dirname, 'src'),
             '@scss': path.resolve(__dirname, 'src', 'scss'),
             '§': path.resolve(__dirname, 'src', 'types'),
-            '$': path.resolve(__dirname, 'src', '.storybook'),
+            '$': path.resolve(__dirname, '.storybook'),
         }
     },
     build: {

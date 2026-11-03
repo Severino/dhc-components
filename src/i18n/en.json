@@ -12,7 +12,7 @@
         "submit": "Login",
         "email_or_nick": "Email or Nickname",
         "password": "Password",
-        "remember_me":"Remember me"
+        "remember_me": "Remember me"
     },
     "attribute": {
         "wkt": {
@@ -23,5 +23,8 @@
         "count": "Count",
         "skip": "Skip",
         "shown_of": "{from} of {to}"
+    },
+    "validation": {
+        "field_is_required": "This field is required"
     }
 }
